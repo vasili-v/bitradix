@@ -1,7 +1,9 @@
 package bitradix
 
 import (
+	"fmt"
 	"net"
+	"os"
 	"reflect"
 	"testing"
 )
@@ -428,6 +430,43 @@ func TestPanic32(t *testing.T) {
 	for k = 0; k <= 255; k++ {
 		r.Insert(k, 32, k)
 	}
+
+	f, err := os.Create("radix32.dot")
+	if err != nil {
+		t.Fatalf("Error: %s", err)
+	}
+	defer f.Close()
+
+	i := 0
+	q := []*Radix32{r}
+	fmt.Fprintf(f, "digraph d {\n")
+	for len(q) > 0 {
+		if q[0] == nil {
+			fmt.Fprintf(f, "A%d [label=\"nil\"]\n", i)
+		} else {
+			fmt.Fprintf(f, "A%d [label=\"k: %07b, b: %d\"]\n", i, q[0].key, q[0].bits)
+
+			q = append(q, q[0].branch[0])
+			q = append(q, q[0].branch[1])
+		}
+		i++
+
+		q = q[1:len(q)]
+	}
+
+	i = 0
+	q = []*Radix32{r}
+	for len(q) > 0 {
+		if q[0] != nil {
+			fmt.Fprintf(f, "A%d -> { A%d A%d }\n", i, i+len(q), i+len(q)+1)
+			q = append(q, q[0].branch[0])
+			q = append(q, q[0].branch[1])
+		}
+		i++
+
+		q = q[1:len(q)]
+	}
+	fmt.Fprintf(f, "}\n")
 }
 
 func TestPanic64(t *testing.T) {
